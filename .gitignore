@@ -2,4 +2,4 @@
 *.ori
 *.cc
 
-!network-server-sample.cc
+!nslora-server.cc
