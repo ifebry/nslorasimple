@@ -500,12 +500,15 @@ int main (int argc, char *argv[])
   NsLoraSim sim1;
   for (int j=1; j<=7; j++)
   {
-	  for (int i=0; i<15; i++)
+	  for (int i=1; i<=15; i++)
 	  {
-		  sim1 = NsLoraSim (250*i, 2, 7500.0, 600.0, i);
-		  NS_LOG_INFO (i << "-th iteration... (" << 250*i << ")");
-		  sim1.Run ();
-		  NS_LOG_INFO (" DONE");
+		  for (int k=1; k<=2; k++)
+		  {
+			  sim1 = NsLoraSim (250*j, k, 7500.0, 600.0, i);
+			  NS_LOG_INFO (i << "-th iteration... (" << 250*j << ", "<< k <<")");
+			  sim1.Run ();
+			  NS_LOG_INFO (" DONE");
+		  }
 	  }
   }
 
