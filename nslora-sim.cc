@@ -244,8 +244,9 @@ NsLoraSim::CreateMap (NodeContainer eds, NodeContainer gws, NodeContainer svr, s
 		fd << pos.x << " " << pos.y << " " << sf << std::endl;
 	}
 	fd.close();
-
-	fd.open ("dat/gw.dat");
+	std::ostringstream oss;
+	oss << "dat/gw-"<< nDevices <<"-"<< rRand <<".dat";
+	fd.open (oss.str());
 	for (NodeContainer::Iterator i = gws.Begin(); i != gws.End(); ++i)
 	{
 		Ptr<Node> object = *i;
@@ -256,13 +257,17 @@ NsLoraSim::CreateMap (NodeContainer eds, NodeContainer gws, NodeContainer svr, s
 		fd << pos.x << " " << pos.y << " 2" << std::endl;
 	}
 	fd.close();
-	fd.open("dat/srv.dat");
+
+	oss.clear();
+	oss << "dat/srv-"<< nDevices <<"-"<< rRand <<".dat";
+	fd.open (oss.str());
 	Ptr<MobilityModel> position = svr.Get(0)->GetObject<MobilityModel>();
 	NS_ASSERT (position != 0);
 
 	Vector pos = position->GetPosition ();
 	fd << pos.x << " " << pos.y << " 7" << std::endl;
 	fd.close();
+	oss.clear ();
 }
 
 void
@@ -415,7 +420,11 @@ NsLoraSim::Run (void)
 	}
 
 	if (printdev)
-	  CreateMap (endDevices, gateways, networkServers, "dat/endDevices.dat");
+	{
+		std::ostringstream oss;
+		oss << "dat/endDevices-"<< nDevices <<"-"<< rRand <<".dat";
+		CreateMap (endDevices, gateways, networkServers, oss.str());
+	}
 
 	// Start simulation
 	appContainer.Start (Seconds (0));
@@ -489,12 +498,15 @@ int main (int argc, char *argv[])
 
   // m_ndevice, m_gatewayRings, m_radius, m_simulationTime, m_rand
   NsLoraSim sim1;
-  for (int i=0; i<15; i++)
+  for (int j=1; j<=7; j++)
   {
-	  sim1 = NsLoraSim (500, 2, 7500.0, 600.0, i);
-	  NS_LOG_INFO (i << "-th iteration...");
-	  sim1.Run ();
-	  NS_LOG_INFO (" DONE");
+	  for (int i=0; i<15; i++)
+	  {
+		  sim1 = NsLoraSim (250*i, 2, 7500.0, 600.0, i);
+		  NS_LOG_INFO (i << "-th iteration... (" << 250*i << ")");
+		  sim1.Run ();
+		  NS_LOG_INFO (" DONE");
+	  }
   }
 
   return 0;
