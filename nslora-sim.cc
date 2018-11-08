@@ -1,5 +1,5 @@
 /*
- * network-server-sim.cc
+ * nslora-sim.cc
  *
  * Created on: Nov 8, 2018
  * Author: ibnufebry

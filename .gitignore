@@ -3,3 +3,4 @@
 *.cc
 
 !nslora-server.cc
+!nslora-sim.cc
