@@ -160,7 +160,7 @@ NsLoraSim::CheckReceptionByAllGWsComplete (std::map<Ptr<Packet const>, PacketSta
 void
 NsLoraSim::TransmissionCallback (Ptr<Packet const> packet, uint32_t systemId)
 {
-  NS_LOG_DEBUG ("Transmitted a packet from device " << systemId);
+  // NS_LOG_DEBUG ("Transmitted a packet from device " << systemId);
   // Create a packetStatus
   PacketStatus status;
   status.packet = packet;
@@ -178,13 +178,13 @@ NsLoraSim::PacketReceptionCallback (Ptr<Packet const> packet, uint32_t systemId)
   (*it).second.outcomes.at (systemId - nDevices) = RECEIVED;
   (*it).second.outcomeNumber += 1;
 
-  Ptr<Packet> pkt = packet->Copy ();
-  LoraTag tag;
-  pkt->RemovePacketTag(tag);
-  uint16_t sendtime = tag.GetSendtime();
+  // Ptr<Packet> pkt = packet->Copy ();
+  // LoraTag tag;
+  // pkt->RemovePacketTag(tag);
+  // uint16_t sendtime = tag.GetSendtime();
 
   // Remove the successfully received packet from the list of sent ones
-  NS_LOG_INFO ("A packet was successfully received at server " << systemId << " stime: " << sendtime);
+  // NS_LOG_INFO ("A packet was successfully received at server " << systemId << " stime: " << sendtime);
 
   CheckReceptionByAllGWsComplete (it);
 }
@@ -192,7 +192,7 @@ NsLoraSim::PacketReceptionCallback (Ptr<Packet const> packet, uint32_t systemId)
 void
 NsLoraSim::InterferenceCallback (Ptr<Packet const> packet, uint32_t systemId)
 {
-	NS_LOG_INFO ("A packet was interferenced " << systemId);
+	// NS_LOG_INFO ("A packet was interferenced " << systemId);
 
 	std::map<Ptr<Packet const>, PacketStatus>::iterator it = packetTracker.find (packet);
 	it->second.outcomes.at (systemId - nDevices) = INTERFERED;
@@ -244,6 +244,7 @@ NsLoraSim::CreateMap (NodeContainer eds, NodeContainer gws, NodeContainer svr, s
 		fd << pos.x << " " << pos.y << " " << sf << std::endl;
 	}
 	fd.close();
+
 	fd.open ("dat/gw.dat");
 	for (NodeContainer::Iterator i = gws.Begin(); i != gws.End(); ++i)
 	{
@@ -437,7 +438,7 @@ NsLoraSim::Run (void)
 
 	std::ofstream fd;
 	std::ostringstream oss;
-	oss << "dat-" << nDevices << ".dat";
+	oss << "dat/dat-" << nDevices << "-" << simulationTime  << ".dat";
 	fd.open (oss.str(), std::ofstream::app);
 
 	fd << rRand << " " << nDevices << " " << double(nDevices)/simulationTime << " " << receivedProb << " " << interferedProb << " " << noMoreReceiversProb << " " << underSensitivityProb <<
@@ -481,19 +482,19 @@ int main (int argc, char *argv[])
 	  LogComponentEnable ("PeriodicSender", LOG_LEVEL_INFO);
 	  LogComponentEnable ("PointToPointNetDevice", LOG_LEVEL_INFO);
   }
-
+  LogComponentEnable ("NsLoraSim", LOG_LEVEL_INFO);
   LogComponentEnableAll (LOG_PREFIX_FUNC);
   LogComponentEnableAll (LOG_PREFIX_NODE);
   LogComponentEnableAll (LOG_PREFIX_TIME);
 
   // m_ndevice, m_gatewayRings, m_radius, m_simulationTime, m_rand
   NsLoraSim sim1;
-  for (uint8_t i=0; i<5; i++)
+  for (int i=0; i<15; i++)
   {
-	  sim1 = NsLoraSim (1000, 2, 7500.0, 600.0, 1);
-	  std::cout << i << "-th iteration...";
+	  sim1 = NsLoraSim (500, 2, 7500.0, 600.0, i);
+	  NS_LOG_INFO (i << "-th iteration...");
 	  sim1.Run ();
-	  std::cout << "DONE" << std::endl;
+	  NS_LOG_INFO (" DONE");
   }
 
   return 0;
