@@ -487,30 +487,14 @@ int main (int argc, char *argv[])
   LogComponentEnableAll (LOG_PREFIX_TIME);
 
   // m_ndevice, m_gatewayRings, m_radius, m_simulationTime, m_rand
-  NsLoraSim sim1 = NsLoraSim (1000, 2, 7500.0, 600.0, 1);
-  sim1.Run ();
-
-  std::cout << "1 done" << std::endl;
-
-  sim1 = NsLoraSim (1000, 2, 7500.0, 600.0, 2);
-  sim1.Run ();
-
-  std::cout << "2 done" << std::endl;
-
-  sim1 = NsLoraSim (1000, 2, 7500.0, 600.0, 3);
-  sim1.Run ();
-
-  std::cout << "3 done" << std::endl;
-
-  sim1 = NsLoraSim (1000, 2, 7500.0, 600.0, 4);
-  sim1.Run ();
-
-  std::cout << "4 done" << std::endl;
-
-  sim1 = NsLoraSim (1000, 2, 7500.0, 600.0, 5);
-  sim1.Run ();
-
-  std::cout << "5 done" << std::endl;
+  NsLoraSim sim1;
+  for (uint8_t i=0; i<5; i++)
+  {
+	  sim1 = NsLoraSim (1000, 2, 7500.0, 600.0, 1);
+	  std::cout << i << "-th iteration...";
+	  sim1.Run ();
+	  std::cout << "DONE" << std::endl;
+  }
 
   return 0;
 }
