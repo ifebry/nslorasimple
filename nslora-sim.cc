@@ -39,7 +39,7 @@ public:
 private:
 	int nDevices;
 	uint8_t gatewayRings;
-	uint8_t nGateways;
+	int nGateways;
 	double radius;
 	double gatewayRadius;
 	double simulationTime;
@@ -103,10 +103,11 @@ NsLoraSim::NsLoraSim (int m_ndevice, uint8_t m_gatewayRings, double m_radius, do
 		printdev (true)
 {
 	nDevices = m_ndevice;
-	gatewayRings = 1;
+	gatewayRings = m_gatewayRings;
 	nGateways = 3*gatewayRings*gatewayRings-3*gatewayRings+1;
 	gatewayRadius = 7500/((gatewayRings-1)*2+1);
 	rRand = m_rand;
+    simulationTime = m_simulationTime;
 }
 
 NsLoraSim::~NsLoraSim()
@@ -245,7 +246,7 @@ NsLoraSim::CreateMap (NodeContainer eds, NodeContainer gws, NodeContainer svr, s
 	}
 	fd.close();
 	std::ostringstream oss;
-	oss << "dat/gw-"<< nDevices <<"-"<< rRand <<".dat";
+	oss << "dat/gw-"<< nDevices <<"-"<< rRand <<"-r-"<< nGateways  <<".dat";
 	fd.open (oss.str());
 	for (NodeContainer::Iterator i = gws.Begin(); i != gws.End(); ++i)
 	{
@@ -259,7 +260,7 @@ NsLoraSim::CreateMap (NodeContainer eds, NodeContainer gws, NodeContainer svr, s
 	fd.close();
 
 	oss.clear();
-	oss << "dat/srv-"<< nDevices <<"-"<< rRand <<".dat";
+	oss << "dat/srv-"<< nDevices <<"-"<< rRand <<"-r-" << nGateways  << ".dat";
 	fd.open (oss.str());
 	Ptr<MobilityModel> position = svr.Get(0)->GetObject<MobilityModel>();
 	NS_ASSERT (position != 0);
@@ -422,7 +423,7 @@ NsLoraSim::Run (void)
 	if (printdev)
 	{
 		std::ostringstream oss;
-		oss << "dat/endDevices-"<< nDevices <<"-"<< rRand <<".dat";
+		oss << "dat/endDevices-"<< nDevices <<"-"<< rRand <<"-r-" << nGateways  << ".dat";
 		CreateMap (endDevices, gateways, networkServers, oss.str());
 	}
 
@@ -447,7 +448,7 @@ NsLoraSim::Run (void)
 
 	std::ofstream fd;
 	std::ostringstream oss;
-	oss << "dat/dat-" << nDevices << "-" << simulationTime  << ".dat";
+	oss << "dat/dat-" << nDevices << "-" << simulationTime  << "-r-" << nGateways  << ".dat";
 	fd.open (oss.str(), std::ofstream::app);
 
 	fd << rRand << " " << nDevices << " " << double(nDevices)/simulationTime << " " << receivedProb << " " << interferedProb << " " << noMoreReceiversProb << " " << underSensitivityProb <<
@@ -498,14 +499,16 @@ int main (int argc, char *argv[])
 
   // m_ndevice, m_gatewayRings, m_radius, m_simulationTime, m_rand
   NsLoraSim sim1;
+  // ndevice increase
   for (int j=1; j<=7; j++)
   {
-	  for (int i=1; i<=15; i++)
+      // rRand
+	  for (int i=1; i<=5; i++)
 	  {
 		  for (int k=1; k<=2; k++)
 		  {
 			  sim1 = NsLoraSim (250*j, k, 7500.0, 600.0, i);
-			  NS_LOG_INFO (i << "-th iteration... (" << 250*j << ", "<< k <<")");
+			  NS_LOG_INFO (i << "-th iteration... (" << 250*j << ", r"<< k <<")");
 			  sim1.Run ();
 			  NS_LOG_INFO (" DONE");
 		  }
