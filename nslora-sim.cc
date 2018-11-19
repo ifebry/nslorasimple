@@ -115,7 +115,7 @@ NsLoraSim::NsLoraSim (int m_ndevice, int m_nGateways, double m_simulationTime, u
 		nDevices (100),
 		gatewayRings (2),
 		radius (7500),
-		gatewayRadius (2500),
+		gatewayRadius (3500),
 		simulationTime (100.0),
 		appPeriodSeconds (10),
 		printdev (true)
@@ -312,10 +312,10 @@ NsLoraSim::Run (void)
 
 	// Gateway mobility
 	Ptr<ListPositionAllocator> positionAllocGw = CreateObject<ListPositionAllocator> ();
-	positionAllocGw->Add (Vector (-1625.0, 1625.0, 0.0));
-	positionAllocGw->Add (Vector (1625.0, 1625.0, 0.0));
-	positionAllocGw->Add (Vector (1625.0, -1625.0, 0.0));
-	positionAllocGw->Add (Vector (-1625.0, -1625.0, 0.0));
+	positionAllocGw->Add (Vector (-3500.0, 3500.0, 0.0));
+	positionAllocGw->Add (Vector (3500.0, 3500.0, 0.0));
+	positionAllocGw->Add (Vector (3500.0, -3500.0, 0.0));
+	positionAllocGw->Add (Vector (-3500.0, -3500.0, 0.0));
 	mobilityGw.SetPositionAllocator(positionAllocGw);
 	mobilityGw.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
 
@@ -522,7 +522,7 @@ int main (int argc, char *argv[])
 	  {
 		  for (int k=1; k<=2; k++)
 		  {
-			  sim1 = NsLoraSim (250*j, k, 120.0, i);
+			  sim1 = NsLoraSim (125*j, k*k, 120.0, i);
 			  NS_LOG_INFO (i << "-th iteration... (" << 250*j << ", r"<< k <<")");
 			  sim1.Run ();
 			  NS_LOG_INFO ("DONE");
