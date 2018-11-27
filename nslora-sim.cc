@@ -283,7 +283,7 @@ NsLoraSim::CreateMap (NodeContainer eds, NodeContainer gws, NodeContainer svr, s
 	}
 	fd.close();
 	std::ostringstream oss;
-	oss << "dat/"<< mode <<"/gw-"<< nDevices <<"-"<< rRand <<"-r-"<< nGateways  <<"-p"<< appPeriodSeconds <<".dat";
+	oss << "dat/"<< mode <<"/gw-"<< nDevices <<"-"<< rRand <<"-r-"<< nGateways  <<"-p"<< std::to_string(appPeriodSeconds) <<".dat";
 	fd.open (oss.str());
 	for (NodeContainer::Iterator i = gws.Begin(); i != gws.End(); ++i)
 	{
@@ -297,7 +297,7 @@ NsLoraSim::CreateMap (NodeContainer eds, NodeContainer gws, NodeContainer svr, s
 	fd.close();
 
 	oss.clear();
-	oss << "dat/"<< mode <<"/srv-"<< nDevices <<"-"<< rRand <<"-r-"<< nGateways  <<"-p"<< appPeriodSeconds <<".dat";
+	oss << "dat/"<< mode <<"/srv-"<< nDevices <<"-"<< rRand <<"-r-"<< nGateways  <<"-p"<< std::to_string(appPeriodSeconds) <<".dat";
 	fd.open (oss.str());
 	Ptr<MobilityModel> position = svr.Get(0)->GetObject<MobilityModel>();
 	NS_ASSERT (position != 0);
@@ -463,7 +463,7 @@ NsLoraSim::Run (void)
 	if (printdev)
 	{
 		std::ostringstream oss;
-		oss << "dat/"<< mode <<"/endDevices-"<< nDevices <<"-"<< rRand <<"-r-" << nGateways  << "-p"<< appPeriodSeconds <<".dat";
+		oss << "dat/"<< mode <<"/endDevices-"<< nDevices <<"-"<< rRand <<"-r-" << nGateways  << "-p"<< std::to_string(appPeriodSeconds) <<".dat";
 		CreateMap (endDevices, gateways, networkServers, oss.str());
 	}
 
@@ -488,7 +488,7 @@ NsLoraSim::Run (void)
 
 	std::ofstream fd;
 	std::ostringstream oss;
-	oss << "dat/"<< mode <<"/dat-" << nDevices << "-" << simulationTime  << "-r-" << nGateways  << "-p" << appPeriodSeconds  << ".csv";
+	oss << "dat/"<< mode <<"/dat-" << nDevices << "-" << simulationTime  << "-r-" << nGateways  << "-p" << std::to_string(appPeriodSeconds)  << ".csv";
 	fd.open (oss.str(), std::ofstream::app);
 
 	fd << rRand << ";" << nDevices << ";" << double(nDevices)/simulationTime << ";" << receivedProb << ";" << interferedProb << ";" << noMoreReceiversProb << ";" << underSensitivityProb <<
@@ -539,16 +539,16 @@ int main (int argc, char *argv[])
 
   // m_ndevice, m_nGateways, m_simulationTime, m_rand
   NsLoraSim sim1;
-  NS_LOG_INFO ("vary gateways..");
+/*  NS_LOG_INFO ("vary gateways..");
   // ndevice increase
   for (int j=1; j<=7; j++)
   {
       // rRand
 	  for (int i=1; i<=5; i++)
 	  {
-		  for (int k=1; k<=2; k++)
+		  for (int k=1; k<=3; k++)
 		  {
-			  sim1 = NsLoraSim (125*j, k*k, 120.0, i);
+			  sim1 = NsLoraSim (250*j, k*k, 300.0, i);
 			  NS_LOG_INFO (i << "-th iteration... (" << 250*j << ", r"<< k <<")");
 			  sim1.Run ();
 			  NS_LOG_INFO ("DONE");
@@ -568,6 +568,16 @@ int main (int argc, char *argv[])
 		  NS_LOG_INFO ("DONE");
 	  }
   }
+*/
+  sim1 = NsLoraSim (250, 2, 7500, 60, 1);
+  sim1.Run ();
+  sim1 = NsLoraSim (250, 1, 7500, 60, 1);
+  sim1.Run ();
+  sim1 = NsLoraSim (750, 2, 7500, 60, 1);
+  sim1.Run ();
+  sim1 = NsLoraSim (750, 1, 7500, 60, 1);
+  sim1.Run ();
+
   return 0;
 }
 
