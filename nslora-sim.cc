@@ -113,7 +113,7 @@ NsLoraSim::NsLoraSim (int m_ndevice, uint8_t m_gatewayRings, double m_radius, do
     simulationTime = m_simulationTime;
 }
 
-NsLoraSim::NsLoraSim (int m_ndevice, int m_nGateways, double m_simulationTime, uint64_t m_rand) :
+NsLoraSim::NsLoraSim (int m_ndevice, int m_rings, double m_simulationTime, uint64_t m_rand) :
 		nDevices (100),
 		gatewayRings (2),
 		radius (7500),
@@ -123,14 +123,15 @@ NsLoraSim::NsLoraSim (int m_ndevice, int m_nGateways, double m_simulationTime, u
 		printdev (true)
 {
 	nDevices = m_ndevice;
-	nGateways = m_nGateways;
+	gatewayRings = m_rings;
+	nGateways = 3*gatewayRings*gatewayRings-3*gatewayRings+1;
 	rRand = m_rand;
     simulationTime = m_simulationTime;
 
     mode = 0;
 }
 
-NsLoraSim::NsLoraSim (int m_nGateways, double m_simulationTime, uint8_t m_appPeriod, uint64_t m_rand) :
+NsLoraSim::NsLoraSim (int m_rings, double m_simulationTime, uint8_t m_appPeriod, uint64_t m_rand) :
 		nDevices (100),
 		gatewayRings (2),
 		radius (7500),
@@ -139,7 +140,8 @@ NsLoraSim::NsLoraSim (int m_nGateways, double m_simulationTime, uint8_t m_appPer
 		appPeriodSeconds (10),
 		printdev (true)
 {
-	nGateways = m_nGateways;
+	gatewayRings = m_rings;
+	nGateways = 3*gatewayRings*gatewayRings-3*gatewayRings+1;
 	appPeriodSeconds = m_appPeriod;
 	rRand = m_rand;
 	simulationTime = m_simulationTime;
@@ -537,46 +539,46 @@ int main (int argc, char *argv[])
   LogComponentEnableAll (LOG_PREFIX_NODE);
   LogComponentEnableAll (LOG_PREFIX_TIME);
 
-  // m_ndevice, m_nGateways, m_simulationTime, m_rand
+  // m_ndevice, m_rings, m_simulationTime, m_rand
   NsLoraSim sim1;
-/*  NS_LOG_INFO ("vary gateways..");
+  NS_LOG_INFO ("vary gateways..");
   // ndevice increase
-  for (int j=1; j<=7; j++)
+  for (int j=1; j<=5; j++)
   {
       // rRand
-	  for (int i=1; i<=5; i++)
+	  for (int i=1; i<=3; i++)
 	  {
-		  for (int k=1; k<=3; k++)
+		  for (int k=1; k<=4; k++)
 		  {
-			  sim1 = NsLoraSim (250*j, k*k, 300.0, i);
-			  NS_LOG_INFO (i << "-th iteration... (" << 250*j << ", r"<< k <<")");
+			  sim1 = NsLoraSim (150*j, k, 150.0, i);
+			  NS_LOG_INFO (i << "-th iteration... (" << 150*j << ", r"<< k <<")");
 			  sim1.Run ();
 			  NS_LOG_INFO ("DONE");
 		  }
 	  }
   }
   NS_LOG_INFO ("vary datarate..");
-  // m_nGateways, m_simulationTime, m_appPeriod, m_rand
-  for (int j=1; j<=7; j++)
+  // m_rings, m_simulationTime, m_appPeriod, m_rand
+  for (int j=1; j<=5; j++)
   {
 	  // rRand
-	  for (int k=1; k<=2; k++)
+	  for (int k=1; k<=3; k++)
 	  {
-		  sim1 = NsLoraSim (4, 120.0, 10*j, k);
-		  NS_LOG_INFO (k << "-th iteration... (" << 10*j << ", r"<< k <<")");
+		  sim1 = NsLoraSim (k, 150.0, 10*j, k);
+		  NS_LOG_INFO (k << "-th iteration... (" << 5*j << ", r"<< k <<")");
 		  sim1.Run ();
 		  NS_LOG_INFO ("DONE");
 	  }
   }
-*/
-  sim1 = NsLoraSim (250, 2, 7500, 60, 1);
-  sim1.Run ();
-  sim1 = NsLoraSim (250, 1, 7500, 60, 1);
-  sim1.Run ();
-  sim1 = NsLoraSim (750, 2, 7500, 60, 1);
-  sim1.Run ();
-  sim1 = NsLoraSim (750, 1, 7500, 60, 1);
-  sim1.Run ();
+
+//  sim1 = NsLoraSim (250, 2, 7500, 60, 1);
+//  sim1.Run ();
+//  sim1 = NsLoraSim (250, 1, 7500, 60, 1);
+//  sim1.Run ();
+//  sim1 = NsLoraSim (750, 2, 7500, 60, 1);
+//  sim1.Run ();
+//  sim1 = NsLoraSim (750, 1, 7500, 60, 1);
+//  sim1.Run ();
 
   return 0;
 }
