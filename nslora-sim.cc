@@ -333,10 +333,14 @@ NsLoraSim::Run (void)
 
 	// Gateway mobility
 	Ptr<ListPositionAllocator> positionAllocGw = CreateObject<ListPositionAllocator> ();
-	positionAllocGw->Add (Vector (-3500.0, 3500.0, 0.0));
-	positionAllocGw->Add (Vector (3500.0, 3500.0, 0.0));
-	positionAllocGw->Add (Vector (3500.0, -3500.0, 0.0));
-	positionAllocGw->Add (Vector (-3500.0, -3500.0, 0.0));
+	positionAllocGw->Add (Vector (0.0, 0.0, 0.0));
+	positionAllocGw->Add (Vector (-3250.0, 0.0, 0.0));
+	positionAllocGw->Add (Vector (3250.0, 0.0, 0.0));
+	positionAllocGw->Add (Vector (3250.0, 3250.0, 0.0));
+	positionAllocGw->Add (Vector (-3250.0, 3250.0, 0.0));
+	positionAllocGw->Add (Vector (-3250.0, -3250.0, 0.0));
+	positionAllocGw->Add (Vector (3250.0, -3250.0, 0.0));
+
 	mobilityGw.SetPositionAllocator(positionAllocGw);
 	mobilityGw.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
 

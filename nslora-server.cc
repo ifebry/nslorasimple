@@ -28,8 +28,8 @@ using namespace ns3;
 NS_LOG_COMPONENT_DEFINE ("NetworkServerExample");
 
 int nDevices = 1000;
-int gatewayRings = 2;
-int nGateways = 3*gatewayRings*gatewayRings-3*gatewayRings+1;
+int gatewayRings = 1;
+int nGateways = 1;
 double radius = 7500;
 double gatewayRadius = 7500/((gatewayRings-1)*2+1);
 double simulationTime = 10;
@@ -219,15 +219,22 @@ int main (int argc, char *argv[])
 
   bool verbose = false;
   bool printdev = false;
+  int nring = 1;
 
   CommandLine cmd;
   cmd.AddValue ("verbose", "Whether to print output or not", verbose);
   cmd.AddValue ("printdev", "Print devices' location or not", printdev);
+  cmd.AddValue ("simtime", "SimulationTIme", simulationTime);
+  cmd.AddValue ("ndev", "SimulationTIme", nDevices);
+  cmd.AddValue ("nring", "Num of rings", nring);
   cmd.Parse (argc, argv);
 
+  gatewayRings = nring;
+  nGateways = 3*gatewayRings*gatewayRings-3*gatewayRings+1;
+
   // Logging
-  LogComponentEnable ("NetworkServerExample", LOG_LEVEL_ALL);
-  LogComponentEnable ("SimpleNetworkServer", LOG_LEVEL_ALL);
+  LogComponentEnable ("NetworkServerExample", LOG_LEVEL_DEBUG);
+  //LogComponentEnable ("SimpleNetworkServer", LOG_LEVEL_ALL);
   // LogComponentEnable ("GatewayLoraMac", LOG_LEVEL_ALL);
   // LogComponentEnable("LoraFrameHeader", LOG_LEVEL_ALL);
   // LogComponentEnable("LoraMacHeader", LOG_LEVEL_ALL);
@@ -242,11 +249,13 @@ int main (int argc, char *argv[])
   // LogComponentEnable("PointToPointNetDevice", LOG_LEVEL_ALL);
   // LogComponentEnable ("Forwarder", LOG_LEVEL_ALL);
   // LogComponentEnable ("OneShotSender", LOG_LEVEL_ALL);
-  LogComponentEnable ("DeviceStatus", LOG_LEVEL_ALL);
-  LogComponentEnable ("GatewayStatus", LOG_LEVEL_ALL);
+  // LogComponentEnable ("DeviceStatus", LOG_LEVEL_ALL);
+  // LogComponentEnable ("GatewayStatus", LOG_LEVEL_ALL);
 //  LogComponentEnableAll (LOG_PREFIX_FUNC);
   LogComponentEnableAll (LOG_PREFIX_NODE);
   LogComponentEnableAll (LOG_PREFIX_TIME);
+
+  NS_LOG_DEBUG ("ng: " << std::to_string(nGateways) << " " << "nr: " << std::to_string(gatewayRings));
 
   // Create a simple wireless channel
   Ptr<LogDistancePropagationLossModel> loss = CreateObject<LogDistancePropagationLossModel> ();
@@ -390,7 +399,12 @@ int main (int argc, char *argv[])
   }
 
   if (printdev)
-	  CreateMap (endDevices, gateways, networkServers, "dat/endDevices.dat");
+  {
+	  std::ostringstream oss;
+	  oss << "dat/endDevices-" << std::to_string(gatewayRings) << "-" << std::to_string(nDevices);
+	  CreateMap (endDevices, gateways, networkServers, oss.str());
+  }
+
 
   // Start simulation
   appContainer.Start (Seconds (0));
