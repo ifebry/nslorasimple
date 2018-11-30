@@ -25,6 +25,7 @@
 #include "ns3/one-shot-sender-helper.h"
 #include "ns3/simple-network-server.h"
 #include <string.h>
+#include <math.h>
 
 using namespace ns3;
 
@@ -34,14 +35,14 @@ class NsLoraSim {
 public:
 	NsLoraSim ();
 	NsLoraSim (int, uint8_t, double, double, uint64_t);
-	NsLoraSim (int, int, double, uint64_t);
+	NsLoraSim (double, double, double, uint64_t);
 	NsLoraSim (int, double, uint8_t, uint64_t);
 	~NsLoraSim ();
 	void Run (void);
 private:
 	int nDevices;
 	uint8_t gatewayRings;
-	int nGateways;
+	int nGateways = 1;
 	double radius;
 	double gatewayRadius;
 	double simulationTime;
@@ -57,6 +58,10 @@ private:
 
 	bool printdev;
 	int mode = 0;
+
+	double arWidth = 10000.0;
+	double edInterval = 500.0;
+	double gwInterval = 2000.0;
 
 	enum PacketOutcome {
 	  RECEIVED,
@@ -113,22 +118,28 @@ NsLoraSim::NsLoraSim (int m_ndevice, uint8_t m_gatewayRings, double m_radius, do
     simulationTime = m_simulationTime;
 }
 
-NsLoraSim::NsLoraSim (int m_ndevice, int m_rings, double m_simulationTime, uint64_t m_rand) :
+NsLoraSim::NsLoraSim (double m_gwInterval, double m_edInterval, double m_simulationTime, uint64_t m_rand) :
 		nDevices (100),
 		gatewayRings (2),
 		radius (7500),
 		gatewayRadius (3500),
 		simulationTime (100.0),
-		appPeriodSeconds (10),
+		appPeriodSeconds (30),
 		printdev (true)
 {
-	nDevices = m_ndevice;
-	gatewayRings = m_rings;
-	nGateways = 3*gatewayRings*gatewayRings-3*gatewayRings+1;
+//	nDevices = m_ndevice;
+//	gatewayRings = m_rings;
+//	nGateways = 3*gatewayRings*gatewayRings-3*gatewayRings+1;
+	gwInterval = m_gwInterval;
+	edInterval = m_edInterval;
+	nDevices = std::pow ((arWidth / edInterval) + 1, 2.0);
+	nGateways = std::pow ((arWidth / gwInterval) - 1, 2.0);
+
 	rRand = m_rand;
     simulationTime = m_simulationTime;
 
-    mode = 0;
+    mode = 7;
+    NS_LOG_DEBUG ("nDev:" << std::to_string(nDevices) << " nGw:" << std::to_string(nGateways));
 }
 
 NsLoraSim::NsLoraSim (int m_rings, double m_simulationTime, uint8_t m_appPeriod, uint64_t m_rand) :
@@ -327,23 +338,37 @@ NsLoraSim::Run (void)
 	// Helpers
 	// End Device mobility
 	MobilityHelper mobilityEd, mobilityGw, mobilitySv;
-	mobilityEd.SetPositionAllocator("ns3::UniformDiscPositionAllocator",
-									"rho",DoubleValue (radius),
-									 "X", DoubleValue (0.0),
-									 "Y", DoubleValue (0.0));
+//	mobilityEd.SetPositionAllocator("ns3::UniformDiscPositionAllocator",
+//									"rho",DoubleValue (radius),
+//									 "X", DoubleValue (0.0),
+//									 "Y", DoubleValue (0.0));
+	mobilityEd.SetPositionAllocator ("ns3::GridPositionAllocator",
+	                                 "MinX", DoubleValue (-1 * (arWidth/2)),
+	                                 "MinY", DoubleValue (-1 * (arWidth/2)),
+	                                 "DeltaX", DoubleValue (edInterval),
+	                                 "DeltaY", DoubleValue (edInterval),
+	                                 "GridWidth", UintegerValue ((arWidth/edInterval) + 1),
+	                                 "LayoutType", StringValue ("RowFirst"));
 	mobilityEd.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
 
 	// Gateway mobility
-	Ptr<ListPositionAllocator> positionAllocGw = CreateObject<ListPositionAllocator> ();
-	positionAllocGw->Add (Vector (0.0, 0.0, 0.0));
-	positionAllocGw->Add (Vector (-3250.0, 0.0, 0.0));
-	positionAllocGw->Add (Vector (3250.0, 0.0, 0.0));
-	positionAllocGw->Add (Vector (3250.0, 3250.0, 0.0));
-	positionAllocGw->Add (Vector (-3250.0, 3250.0, 0.0));
-	positionAllocGw->Add (Vector (-3250.0, -3250.0, 0.0));
-	positionAllocGw->Add (Vector (3250.0, -3250.0, 0.0));
+//	Ptr<ListPositionAllocator> positionAllocGw = CreateObject<ListPositionAllocator> ();
+//	positionAllocGw->Add (Vector (0.0, 0.0, 0.0));
+//	positionAllocGw->Add (Vector (-3250.0, 0.0, 0.0));
+//	positionAllocGw->Add (Vector (3250.0, 0.0, 0.0));
+//	positionAllocGw->Add (Vector (3250.0, 3250.0, 0.0));
+//	positionAllocGw->Add (Vector (-3250.0, 3250.0, 0.0));
+//	positionAllocGw->Add (Vector (-3250.0, -3250.0, 0.0));
+//	positionAllocGw->Add (Vector (3250.0, -3250.0, 0.0));
 
-	mobilityGw.SetPositionAllocator(positionAllocGw);
+//	mobilityGw.SetPositionAllocator(positionAllocGw);
+	mobilityGw.SetPositionAllocator("ns3::GridPositionAllocator",
+							   "MinX", DoubleValue (-1 * (arWidth/2) + gwInterval),
+							   "MinY", DoubleValue (-1 * (arWidth/2) + gwInterval),
+							   "DeltaX", DoubleValue (gwInterval),
+							   "DeltaY", DoubleValue (gwInterval),
+							   "GridWidth", UintegerValue (arWidth/gwInterval - 1),
+							   "LayoutType", StringValue ("RowFirst"));
 	mobilityGw.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
 
 	// Server mobility
@@ -397,11 +422,18 @@ NsLoraSim::Run (void)
 	gateways.Create (nGateways);
 	mobilityGw.Install (gateways);
 
+//	bool flagFirst = true;
 	for (NodeContainer::Iterator i= gateways.Begin (); i != gateways.End (); ++i)
 	{
 	  Ptr<Node> gw = *i;
 	  Ptr<MobilityModel> mob = gw->GetObject<MobilityModel> ();
 	  Vector pos = mob->GetPosition();
+//	  if (flagFirst)
+//	  {
+//		  pos.x = 0.0;
+//		  pos.y = 0.0;
+//		  flagFirst = false;
+//	  }
 	  pos.z = 1.2;
 	  mob->SetPosition(pos);
 	}
@@ -541,35 +573,54 @@ int main (int argc, char *argv[])
 
   // m_ndevice, m_rings, m_simulationTime, m_rand
   NsLoraSim sim1;
-  NS_LOG_INFO ("vary gateways..");
+//  NS_LOG_INFO ("vary gateways..");
+
+  for (int iEd = 1; iEd <= 4; iEd++)
+  {
+	  sim1 = NsLoraSim (1000, 125.0*iEd, 600, 1);
+	  sim1.Run ();
+  }
+
+  for (int iEd = 1; iEd <= 4; iEd++)
+  {
+	  sim1 = NsLoraSim (2000, 125.0*iEd, 600, 1);
+	  sim1.Run ();
+  }
+
+  for (int iEd = 1; iEd <= 4; iEd++)
+  {
+  	  sim1 = NsLoraSim (2500, 125.0*iEd, 600, 1);
+  	  sim1.Run ();
+   }
+
   // ndevice increase
-  for (int j=1; j<=5; j++)
-  {
-      // rRand
-	  for (int i=1; i<=3; i++)
-	  {
-		  for (int k=1; k<=4; k++)
-		  {
-			  sim1 = NsLoraSim (150*j, k, 150.0, i);
-			  NS_LOG_INFO (i << "-th iteration... (" << 150*j << ", r"<< k <<")");
-			  sim1.Run ();
-			  NS_LOG_INFO ("DONE");
-		  }
-	  }
-  }
-  NS_LOG_INFO ("vary datarate..");
+//  for (int j=1; j<=5; j++)
+//  {
+//      // rRand
+//	  for (int i=1; i<=3; i++)
+//	  {
+//		  for (int k=1; k<=4; k++)
+//		  {
+//			  sim1 = NsLoraSim (150*j, k, 150.0, i);
+//			  NS_LOG_INFO (i << "-th iteration... (" << 150*j << ", r"<< k <<")");
+//			  sim1.Run ();
+//			  NS_LOG_INFO ("DONE");
+//		  }
+//	  }
+//  }
+//  NS_LOG_INFO ("vary datarate..");
   // m_rings, m_simulationTime, m_appPeriod, m_rand
-  for (int j=1; j<=5; j++)
-  {
-	  // rRand
-	  for (int k=1; k<=3; k++)
-	  {
-		  sim1 = NsLoraSim (k, 150.0, 10*j, k);
-		  NS_LOG_INFO (k << "-th iteration... (" << 5*j << ", r"<< k <<")");
-		  sim1.Run ();
-		  NS_LOG_INFO ("DONE");
-	  }
-  }
+//  for (int j=1; j<=5; j++)
+//  {
+//	  // rRand
+//	  for (int k=1; k<=3; k++)
+//	  {
+//		  sim1 = NsLoraSim (k, 150.0, 10*j, k);
+//		  NS_LOG_INFO (k << "-th iteration... (" << 5*j << ", r"<< k <<")");
+//		  sim1.Run ();
+//		  NS_LOG_INFO ("DONE");
+//	  }
+//  }
 
 //  sim1 = NsLoraSim (250, 2, 7500, 60, 1);
 //  sim1.Run ();
