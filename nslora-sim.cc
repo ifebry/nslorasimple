@@ -140,7 +140,7 @@ NsLoraSim::NsLoraSim (int m_devices, double m_gwInterval, double m_simulationTim
 	rRand = m_rand;
     simulationTime = m_simulationTime;
 
-    mode = 512-2;
+    mode = 5123;
     NS_LOG_DEBUG ("nDev:" << std::to_string(nDevices) << " nGw:" << std::to_string(nGateways));
 }
 
@@ -600,34 +600,36 @@ int main (int argc, char *argv[])
 
 
   NsLoraSim sim1;
-  double intStart = 1250.0;
+//  double intStart = 1250.0;
   std::ofstream ofs;
   std::ostringstream oss;
-  oss << "dat/512-2/dat-n200-t600-gw"<<std::to_string(intStart)<<".csv";
+  oss << "dat/5123/dat-n200-t600-gw.csv";
   ofs.open(oss.str());
   double avgpdr = 0.0;
   double avgdelay = 0.0;
   int r;
-  for (double intGw = 1.0; intGw <= 2.0; intGw += 1.0)
+  double arr[5] = { 1250.0, 1500.0, 1750.0, 2000.0, 2500.0 };
+
+  for (int intGw = 0; intGw<5; intGw++)
   {
 	  for (int ndev=1; ndev <= 3; ndev++)
 	  {
-		  for (r=1; r<=10; r++)
+		  for (r=1; r<=2; r++)
 		  {
-			  sim1 = NsLoraSim (200 * ndev, intStart * intGw, 300.0, r);
+			  sim1 = NsLoraSim (200 * ndev, arr[intGw] , 300.0, r);
 			  sim1.Run ();
 			  avgpdr += sim1.GetPDR ();
 			  avgdelay += sim1.GetDelay ();
 		  }
 
 		  NS_LOG_INFO (std::to_string(200 * ndev) << " " << std::to_string(sim1.GetGW()) << \
-				  	  " " << std::to_string(intStart * intGw) << " PDR: " << std::to_string(avgpdr/r) << \
+				  	  " " << std::to_string(arr[intGw]) << " PDR: " << std::to_string(avgpdr/r) << \
 					  " . delay: " << std::to_string(avgdelay/r));
 		  ofs << std::to_string(200 * ndev) << " " \
 				  << std::to_string(sim1.GetGW()) << " " \
-				  << std::to_string(intStart * intGw) << " " \
+				  << std::to_string(arr[intGw]) << " " \
 				  << std::to_string(avgpdr/r) << " " \
-				  << std::to_string(avgdelay/3) << std::endl;
+				  << std::to_string(avgdelay/r) << std::endl;
 
 		  avgpdr = 0.0;
 		  avgdelay = 0.0;
