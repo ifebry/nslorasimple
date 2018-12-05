@@ -603,7 +603,7 @@ int main (int argc, char *argv[])
   double intStart = 1250.0;
   std::ofstream ofs;
   std::ostringstream oss;
-  oss << "dat/512/dat-n200-t600-gw"<<std::to_string(intStart)<<".csv";
+  oss << "dat/512-2/dat-n200-t600-gw"<<std::to_string(intStart)<<".csv";
   ofs.open(oss.str());
   double avgpdr = 0.0;
   double avgdelay = 0.0;
