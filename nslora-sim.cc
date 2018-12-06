@@ -612,11 +612,11 @@ int main (int argc, char *argv[])
 
   for (int intGw = 0; intGw<5; intGw++)
   {
-	  for (int ndev=1; ndev <= 3; ndev++)
+	  for (int ndev=0; ndev <= 3; ndev++)
 	  {
-		  for (r=1; r<=2; r++)
+		  for (r=1; r<=10; r++)
 		  {
-			  sim1 = NsLoraSim (200 * ndev, arr[intGw] , 300.0, r);
+			  sim1 = NsLoraSim (200 + ndev*100, arr[intGw] , 300.0, r);
 			  sim1.Run ();
 			  avgpdr += sim1.GetPDR ();
 			  avgdelay += sim1.GetDelay ();
