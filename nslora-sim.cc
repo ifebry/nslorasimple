@@ -26,6 +26,7 @@
 #include "ns3/simple-network-server.h"
 #include <string.h>
 #include <math.h>
+#include <vector>
 
 using namespace ns3;
 
@@ -42,6 +43,7 @@ public:
 	double GetPDR (void);
 	double GetDelay (void);
 	int GetGW (void);
+	int GetReceived (void);
 private:
 	int nDevices;
 	uint8_t gatewayRings;
@@ -67,7 +69,7 @@ private:
 	double gwInterval = 2000.0;
 
 	double pdr = 100.0;
-	double e2edelay = 50.0;
+	double e2edelay = 0.0;
 
 	enum PacketOutcome {
 	  RECEIVED,
@@ -134,7 +136,8 @@ NsLoraSim::NsLoraSim (int m_devices, double m_gwInterval, double m_simulationTim
 		printdev (true)
 {
 	gwInterval = m_gwInterval;
-	nGateways = std::pow ((arWidth / gwInterval) - 1, 2.0);
+	uint8_t div = arWidth / gwInterval - 1;
+	nGateways = std::pow (div, 2.0);
 
 	nDevices = m_devices;
 	rRand = m_rand;
@@ -173,9 +176,16 @@ NsLoraSim::GetPDR ()
 	return pdr;
 }
 
+int
+NsLoraSim::GetReceived ()
+{
+	return received;
+}
+
 double
 NsLoraSim::GetDelay ()
 {
+//	NS_LOG_INFO ("e2edelay: " << std::to_string(e2edelay) << "_" << std::to_string(received));
 	return e2edelay;
 }
 
@@ -249,13 +259,13 @@ NsLoraSim::PacketReceptionCallback (Ptr<Packet const> packet, uint32_t systemId)
   (*it).second.outcomes.at (systemId - nDevices) = RECEIVED;
   (*it).second.outcomeNumber += 1;
 
-  // Ptr<Packet> pkt = packet->Copy ();
-  // LoraTag tag;
-  // pkt->RemovePacketTag(tag);
-  // uint16_t sendtime = tag.GetSendtime();
+   Ptr<Packet> pkt = packet->Copy ();
 
+   LoraTag tag;
+   pkt->PeekPacketTag(tag);
+   e2edelay =  e2edelay + Simulator::Now().GetMilliSeconds() - tag.GetSendtime();
   // Remove the successfully received packet from the list of sent ones
-  // NS_LOG_INFO ("A packet was successfully received at server " << systemId << " stime: " << sendtime);
+//   NS_LOG_INFO ("A packet was successfully received at server " << systemId);
 
   CheckReceptionByAllGWsComplete (it);
 }
@@ -358,37 +368,15 @@ NsLoraSim::Run (void)
 	// Helpers
 	// End Device mobility
 	MobilityHelper mobilityEd, mobilityGw, mobilitySv;
-//	mobilityEd.SetPositionAllocator("ns3::UniformDiscPositionAllocator",
-//									"rho",DoubleValue (radius),
-//									 "X", DoubleValue (0.0),
-//									 "Y", DoubleValue (0.0));
 	mobilityEd.SetPositionAllocator ("ns3::RandomRectanglePositionAllocator",
 								   	 "X", StringValue ("ns3::UniformRandomVariable[Min=-5000|Max=5000]"),
 									 "Y", StringValue ("ns3::UniformRandomVariable[Min=-5000|Max=5000]"));
-//	mobilityEd.SetPositionAllocator ("ns3::GridPositionAllocator",
-//	                                 "MinX", DoubleValue (-1 * (arWidth/2)),
-//	                                 "MinY", DoubleValue (-1 * (arWidth/2)),
-//	                                 "DeltaX", DoubleValue (edInterval),
-//	                                 "DeltaY", DoubleValue (edInterval),
-//	                                 "GridWidth", UintegerValue ((arWidth/edInterval) + 1),
-//	                                 "LayoutType", StringValue ("RowFirst"));
 	mobilityEd.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
 
 	// Gateway mobility
-//	Ptr<ListPositionAllocator> positionAllocGw = CreateObject<ListPositionAllocator> ();
-//	positionAllocGw->Add (Vector (0.0, 0.0, 0.0));
-//	positionAllocGw->Add (Vector (-2500.0, 0.0, 0.0));
-//	positionAllocGw->Add (Vector (2500.0, 0.0, 0.0));
-//	positionAllocGw->Add (Vector (0.0, -2500.0, 0.0));
-//	positionAllocGw->Add (Vector (0.0, 2500.0, 0.0));
-//	positionAllocGw->Add (Vector (-3250.0, 3250.0, 0.0));
-//	positionAllocGw->Add (Vector (-3250.0, -3250.0, 0.0));
-//	positionAllocGw->Add (Vector (3250.0, -3250.0, 0.0));
-
-//	mobilityGw.SetPositionAllocator(positionAllocGw);
 	mobilityGw.SetPositionAllocator("ns3::GridPositionAllocator",
-							   "MinX", DoubleValue (-1 * (arWidth/2) + gwInterval),
-							   "MinY", DoubleValue (-1 * (arWidth/2) + gwInterval),
+							   "MinX", DoubleValue (-1 * (arWidth/2) + (gwInterval)),
+							   "MinY", DoubleValue (-1 * (arWidth/2) + (gwInterval)),
 							   "DeltaX", DoubleValue (gwInterval),
 							   "DeltaY", DoubleValue (gwInterval),
 							   "GridWidth", UintegerValue (arWidth/gwInterval - 1),
@@ -446,18 +434,12 @@ NsLoraSim::Run (void)
 	gateways.Create (nGateways);
 	mobilityGw.Install (gateways);
 
-//	bool flagFirst = true;
 	for (NodeContainer::Iterator i= gateways.Begin (); i != gateways.End (); ++i)
 	{
 	  Ptr<Node> gw = *i;
 	  Ptr<MobilityModel> mob = gw->GetObject<MobilityModel> ();
 	  Vector pos = mob->GetPosition();
-//	  if (flagFirst)
-//	  {
-//		  pos.x = 0.0;
-//		  pos.y = 0.0;
-//		  flagFirst = false;
-//	  }
+
 	  pos.z = 1.2;
 	  mob->SetPosition(pos);
 	}
@@ -534,26 +516,40 @@ NsLoraSim::Run (void)
 	Simulator::Destroy ();
 
 	Ptr<SimpleNetworkServer> aps = DynamicCast<SimpleNetworkServer>(serverContainer.Get(0));
+	Ptr<PeriodicSender> ps = DynamicCast<PeriodicSender>(appContainer.Get(0));
 	NS_ASSERT (aps != 0);
-	double receivedProb = double(received)/nDevices;
-	double interferedProb = double(interfered)/nDevices;
-	double noMoreReceiversProb = double(noMoreReceivers)/nDevices;
-	double underSensitivityProb = double(underSensitivity)/nDevices;
+	double receivedProb = double(received)/nDevices;					// 3
+	double interferedProb = double(interfered)/nDevices;				// 4
+	double noMoreReceiversProb = double(noMoreReceivers)/nDevices;		// 5
+	double underSensitivityProb = double(underSensitivity)/nDevices;	// 6
 
-	double receivedProbGivenAboveSensitivity = double(received)/(nDevices - underSensitivity);
-	double interferedProbGivenAboveSensitivity = double(interfered)/(nDevices - underSensitivity);
-	double noMoreReceiversProbGivenAboveSensitivity = double(noMoreReceivers)/(nDevices - underSensitivity);
+	double receivedProbGivenAboveSensitivity = double(received)/(nDevices - underSensitivity);	// 7
+	double interferedProbGivenAboveSensitivity = double(interfered)/(nDevices - underSensitivity);	// 8
+	double noMoreReceiversProbGivenAboveSensitivity = double(noMoreReceivers)/(nDevices - underSensitivity); // 9
 
 	pdr = receivedProb;
-	e2edelay = aps->GetAverageDelay();
+	e2edelay = e2edelay / received;
 
 	std::ofstream fd;
 	std::ostringstream oss;
 	oss << "dat/"<< mode <<"/dat-" << nDevices << "-" << simulationTime  << "-r-" << nGateways  << "-p" << std::to_string(appPeriodSeconds)  << ".csv";
 	fd.open (oss.str(), std::ofstream::app);
 
-	fd << rRand << ";" << nDevices << ";" << double(nDevices)/simulationTime << ";" << receivedProb << ";" << interferedProb << ";" << noMoreReceiversProb << ";" << underSensitivityProb <<
-	";" << receivedProbGivenAboveSensitivity << ";" << interferedProbGivenAboveSensitivity << ";" << noMoreReceiversProbGivenAboveSensitivity << ";" << aps->GetAverageDelay() << std::endl;
+	fd << rRand << " " \
+	   << nDevices << " "
+	   << double(nDevices)/simulationTime << " " \
+	   << receivedProb << " " \
+	   << interferedProb << " " \
+	   << noMoreReceiversProb << " " \
+	   << underSensitivityProb << " " \
+	   << receivedProbGivenAboveSensitivity << " " \
+	   << interferedProbGivenAboveSensitivity << " " \
+	   << noMoreReceiversProbGivenAboveSensitivity << " " \
+	   << aps->GetAverageDelay() << " " \
+	   << aps->GetTotalPkts() << " " \
+	   << std::to_string (e2edelay / received) << " " \
+	   << std::to_string (received) << " " \
+	   << std::endl;
 
 	fd.close ();
 }
@@ -583,8 +579,8 @@ int main (int argc, char *argv[])
   {
 	  LogComponentEnable ("NsLoraSim", LOG_LEVEL_DEBUG);
 	  LogComponentEnable ("SimpleNetworkServer", LOG_LEVEL_DEBUG);
-	  LogComponentEnable ("PeriodicSender", LOG_LEVEL_DEBUG);
-	  LogComponentEnable ("PointToPointNetDevice", LOG_LEVEL_DEBUG);
+//	  LogComponentEnable ("PeriodicSender", LOG_LEVEL_DEBUG);
+//	  LogComponentEnable ("PointToPointNetDevice", LOG_LEVEL_DEBUG);
   }
   else if (verbose == 3)
   {
@@ -598,34 +594,33 @@ int main (int argc, char *argv[])
   LogComponentEnableAll (LOG_PREFIX_NODE);
   LogComponentEnableAll (LOG_PREFIX_TIME);
 
-
-  NsLoraSim sim1;
-//  double intStart = 1250.0;
   std::ofstream ofs;
   std::ostringstream oss;
-  oss << "dat/5123/dat-n200-t600-gw.csv";
+  oss << "dat/5123/dat-n200-t120-gw.csv";
   ofs.open(oss.str());
   double avgpdr = 0.0;
   double avgdelay = 0.0;
-  int r;
-  double arr[5] = { 1250.0, 1500.0, 1750.0, 2000.0, 2500.0 };
+  int r, initDev, incDev;
+  initDev = 200; incDev = 100; r = 5;
+  double arr[6] = { 1250.0, 1400.0, 1500.0, 1750.0, 2000.0, 2500.0 };
 
-  for (int intGw = 0; intGw<5; intGw++)
+  NsLoraSim sim1;
+  for (int intGw = 0; intGw < 6; intGw++)
   {
-	  for (int ndev=0; ndev <= 3; ndev++)
+	  for (int ndev=0; ndev <= 4; ndev++)
 	  {
-		  for (r=1; r<=10; r++)
+		  for (int j=1; j<=r; j++)
 		  {
-			  sim1 = NsLoraSim (200 + ndev*100, arr[intGw] , 300.0, r);
+			  sim1 = NsLoraSim (initDev + ndev*incDev, arr[intGw] , 300.0, j*j);
 			  sim1.Run ();
 			  avgpdr += sim1.GetPDR ();
-			  avgdelay += sim1.GetDelay ();
+			  avgdelay = avgdelay + (sim1.GetDelay () / sim1.GetReceived());
 		  }
 
-		  NS_LOG_INFO (std::to_string(200 * ndev) << " " << std::to_string(sim1.GetGW()) << \
+		  NS_LOG_INFO (std::to_string(initDev + ndev*incDev) << " " << std::to_string(sim1.GetGW()) << \
 				  	  " " << std::to_string(arr[intGw]) << " PDR: " << std::to_string(avgpdr/r) << \
 					  " . delay: " << std::to_string(avgdelay/r));
-		  ofs << std::to_string(200 * ndev) << " " \
+		  ofs << std::to_string(initDev + ndev*incDev) << " " \
 				  << std::to_string(sim1.GetGW()) << " " \
 				  << std::to_string(arr[intGw]) << " " \
 				  << std::to_string(avgpdr/r) << " " \
