@@ -73,6 +73,8 @@ private:
 	double pdr = 100.0;
 	double e2edelay = 0.0;
 
+	PeriodicSendPktCallback sendcallback;
+
 	enum PacketOutcome {
 	  RECEIVED,
 	  INTERFERED,
@@ -89,6 +91,7 @@ private:
 	};
 
 	std::map<Ptr<Packet const>, PacketStatus> packetTracker;
+	std::map<uint64_t, Time> timeTracker;
 
 	void CheckReceptionByAllGWsComplete (std::map<Ptr<Packet const>, PacketStatus>::iterator );
 	void TransmissionCallback (Ptr<Packet const>, uint32_t );
@@ -97,6 +100,8 @@ private:
 	void NoMoreReceiversCallback (Ptr<Packet const> , uint32_t );
 	void UnderSensitivityCallback (Ptr<Packet const> , uint32_t );
 	void CreateMap (NodeContainer , NodeContainer , NodeContainer , std::string );
+	void TransmitPacketCallback (uint64_t, Time);
+	void ServerRcvCallback (uint64_t, Time);
 };
 
 NsLoraSim::NsLoraSim () :
@@ -129,7 +134,6 @@ NsLoraSim::NsLoraSim (int m_ndevice, uint8_t m_gatewayRings, double m_radius, do
 }
 
 NsLoraSim::NsLoraSim (int m_devices, double m_gwInterval, double m_simulationTime, uint64_t m_rand) :
-		nDevices (100),
 		gatewayRings (2),
 		radius (5000),
 		gatewayRadius (3500),
@@ -165,6 +169,7 @@ NsLoraSim::NsLoraSim (int m_devices, double m_gwInterval, uint8_t m_appPeriod, u
 	appPeriodSeconds = m_appPeriod;
 	rRand = m_rand;
 
+	nDevices = m_devices;
 	mode = 1012;
 	NS_LOG_DEBUG ("per: "<< std::to_string(appPeriodSeconds) << " nDev:" << std::to_string(nDevices) << " nGw:" << std::to_string(nGateways));
 }
@@ -172,6 +177,8 @@ NsLoraSim::NsLoraSim (int m_devices, double m_gwInterval, uint8_t m_appPeriod, u
 NsLoraSim::~NsLoraSim()
 {
 	NS_LOG_INFO ("finishing simulation...");
+	packetTracker.clear();
+	timeTracker.clear();
 }
 
 double
@@ -189,8 +196,7 @@ NsLoraSim::GetReceived ()
 double
 NsLoraSim::GetDelay ()
 {
-//	NS_LOG_INFO ("e2edelay: " << std::to_string(e2edelay) << "_" << std::to_string(received));
-	return e2edelay;
+	return e2edelay/(double)received;
 }
 
 int
@@ -259,18 +265,13 @@ NsLoraSim::TransmissionCallback (Ptr<Packet const> packet, uint32_t systemId)
 void
 NsLoraSim::PacketReceptionCallback (Ptr<Packet const> packet, uint32_t systemId)
 {
+//  NS_LOG_DEBUG ("!");
+  // NS_LOG_DEBUG ("A packet was successfully received at server " << systemId << Simulator::Now().GetMilliSeconds() << " : " << std::to_string(tag.GetSendtime()));
   std::map<Ptr<Packet const>, PacketStatus>::iterator it = packetTracker.find (packet);
   (*it).second.outcomes.at (systemId - nDevices) = RECEIVED;
   (*it).second.outcomeNumber += 1;
 
-   Ptr<Packet> pkt = packet->Copy ();
-
-   LoraTag tag;
-   pkt->PeekPacketTag(tag);
-   e2edelay =  e2edelay + Simulator::Now().GetMilliSeconds() - tag.GetSendtime();
   // Remove the successfully received packet from the list of sent ones
-//   NS_LOG_INFO ("A packet was successfully received at server " << systemId);
-
   CheckReceptionByAllGWsComplete (it);
 }
 
@@ -282,6 +283,8 @@ NsLoraSim::InterferenceCallback (Ptr<Packet const> packet, uint32_t systemId)
 	std::map<Ptr<Packet const>, PacketStatus>::iterator it = packetTracker.find (packet);
 	it->second.outcomes.at (systemId - nDevices) = INTERFERED;
 	it->second.outcomeNumber += 1;
+
+	CheckReceptionByAllGWsComplete (it);
 }
 
 void
@@ -365,6 +368,23 @@ float
 NsLoraSim::GetInterferedProb (void)
 {
 	return float(interfered)/nDevices;
+}
+
+void
+NsLoraSim::TransmitPacketCallback (uint64_t pid, Time t)
+{
+//	NS_LOG_DEBUG (std::to_string(pid) << " " << t.GetMilliSeconds());
+	timeTracker.insert(std::pair<uint64_t, Time>(pid, t));
+}
+
+void
+NsLoraSim::ServerRcvCallback (uint64_t pid, Time t)
+{
+	// Get transmission time for this packet
+	std::map<uint64_t, Time>::iterator it2 = timeTracker.find(pid);
+
+	e2edelay =  e2edelay + Simulator::Now().GetMilliSeconds() - it2->second.GetMilliSeconds();
+	NS_LOG_INFO (std::to_string(e2edelay));
 }
 
 void
@@ -487,33 +507,39 @@ NsLoraSim::Run (void)
 	// Register the events
 	for (NodeContainer::Iterator j = endDevices.Begin (); j != endDevices.End (); ++j)
 	{
-	Ptr<Node> node = *j;
-	Ptr<LoraNetDevice> loraNetDevice = node->GetDevice (0)->GetObject<LoraNetDevice> ();
-	Ptr<LoraPhy> phy = loraNetDevice->GetPhy ();
-	phy->TraceConnectWithoutContext ("StartSending",
-									 MakeCallback (&NsLoraSim::TransmissionCallback, this));
+		Ptr<Node> node = *j;
+		Ptr<LoraNetDevice> loraNetDevice = node->GetDevice (0)->GetObject<LoraNetDevice> ();
+		Ptr<LoraPhy> phy = loraNetDevice->GetPhy ();
+		phy->TraceConnectWithoutContext ("StartSending",
+										 MakeCallback (&NsLoraSim::TransmissionCallback, this));
 	}
 
 	// Install reception paths on gateways
 	for (NodeContainer::Iterator j = gateways.Begin (); j != gateways.End (); j++)
 	{
 
-	Ptr<Node> object = *j;
-	// Get the device
-	Ptr<NetDevice> netDevice = object->GetDevice (0);
-	Ptr<LoraNetDevice> loraNetDevice = netDevice->GetObject<LoraNetDevice> ();
-	NS_ASSERT (loraNetDevice != 0);
-	Ptr<GatewayLoraPhy> gwPhy = loraNetDevice->GetPhy ()->GetObject<GatewayLoraPhy> ();
+		Ptr<Node> object = *j;
+		// Get the device
+		Ptr<NetDevice> netDevice = object->GetDevice (0);
+		Ptr<LoraNetDevice> loraNetDevice = netDevice->GetObject<LoraNetDevice> ();
+		NS_ASSERT (loraNetDevice != 0);
+		Ptr<GatewayLoraPhy> gwPhy = loraNetDevice->GetPhy ()->GetObject<GatewayLoraPhy> ();
 
-	// Global callbacks (every gateway)
-	gwPhy->TraceConnectWithoutContext ("ReceivedPacket",
-									   MakeCallback (&NsLoraSim::PacketReceptionCallback, this));
-	gwPhy->TraceConnectWithoutContext ("LostPacketBecauseInterference",
-									   MakeCallback (&NsLoraSim::InterferenceCallback, this));
-	gwPhy->TraceConnectWithoutContext ("LostPacketBecauseNoMoreReceivers",
-									   MakeCallback (&NsLoraSim::NoMoreReceiversCallback, this));
-	gwPhy->TraceConnectWithoutContext ("LostPacketBecauseUnderSensitivity",
-									   MakeCallback (&NsLoraSim::UnderSensitivityCallback, this));
+		// Global callbacks (every gateway)
+		gwPhy->TraceConnectWithoutContext ("ReceivedPacket",
+										   MakeCallback (&NsLoraSim::PacketReceptionCallback, this));
+		gwPhy->TraceConnectWithoutContext ("LostPacketBecauseInterference",
+										   MakeCallback (&NsLoraSim::InterferenceCallback, this));
+		gwPhy->TraceConnectWithoutContext ("LostPacketBecauseNoMoreReceivers",
+										   MakeCallback (&NsLoraSim::NoMoreReceiversCallback, this));
+		gwPhy->TraceConnectWithoutContext ("LostPacketBecauseUnderSensitivity",
+										   MakeCallback (&NsLoraSim::UnderSensitivityCallback, this));
+	}
+
+	for (ApplicationContainer::Iterator j = appContainer.Begin(); j != appContainer.End (); j++)
+	{
+		Ptr<PeriodicSender> ps = DynamicCast<PeriodicSender>(*j);
+		ps->SetPeriodicSendPktCallback(MakeCallback(&NsLoraSim::TransmitPacketCallback, this));
 	}
 
 	if (printdev)
@@ -523,6 +549,9 @@ NsLoraSim::Run (void)
 		CreateMap (endDevices, gateways, networkServers, oss.str());
 	}
 
+	Ptr<SimpleNetworkServer> aps = DynamicCast<SimpleNetworkServer>(serverContainer.Get(0));
+	aps->SetServerRcvCallback(MakeCallback(&NsLoraSim::ServerRcvCallback, this));
+
 	// Start simulation
 	appContainer.Start (Seconds (0));
 	appContainer.Stop (appStopTime);
@@ -531,9 +560,10 @@ NsLoraSim::Run (void)
 	Simulator::Run ();
 	Simulator::Destroy ();
 
-	Ptr<SimpleNetworkServer> aps = DynamicCast<SimpleNetworkServer>(serverContainer.Get(0));
+
 	Ptr<PeriodicSender> ps = DynamicCast<PeriodicSender>(appContainer.Get(0));
 	NS_ASSERT (aps != 0);
+
 	double receivedProb = double(received)/nDevices;					// 3
 	double interferedProb = double(interfered)/nDevices;				// 4
 	double noMoreReceiversProb = double(noMoreReceivers)/nDevices;		// 5
@@ -544,8 +574,6 @@ NsLoraSim::Run (void)
 	double noMoreReceiversProbGivenAboveSensitivity = double(noMoreReceivers)/(nDevices - underSensitivity); // 9
 
 	pdr = receivedProb;
-	e2edelay = e2edelay / received;
-
 	std::ofstream fd;
 	std::ostringstream oss;
 	oss << "dat/"<< mode <<"/dat-" << nDevices << "-" << simulationTime  << "-r-" << nGateways  << "-p" << std::to_string(appPeriodSeconds)  << ".csv";
@@ -595,8 +623,7 @@ int main (int argc, char *argv[])
   {
 	  LogComponentEnable ("NsLoraSim", LOG_LEVEL_DEBUG);
 	  LogComponentEnable ("SimpleNetworkServer", LOG_LEVEL_DEBUG);
-//	  LogComponentEnable ("PeriodicSender", LOG_LEVEL_DEBUG);
-//	  LogComponentEnable ("PointToPointNetDevice", LOG_LEVEL_DEBUG);
+	  LogComponentEnable ("PeriodicSender", LOG_LEVEL_DEBUG);
   }
   else if (verbose == 3)
   {
@@ -605,21 +632,22 @@ int main (int argc, char *argv[])
 	  LogComponentEnable ("PeriodicSender", LOG_LEVEL_INFO);
 	  LogComponentEnable ("PointToPointNetDevice", LOG_LEVEL_INFO);
   }
-  LogComponentEnable ("NsLoraSim", LOG_LEVEL_INFO);
+  LogComponentEnable ("NsLoraSim", LOG_LEVEL_DEBUG);
   LogComponentEnableAll (LOG_PREFIX_FUNC);
   LogComponentEnableAll (LOG_PREFIX_NODE);
   LogComponentEnableAll (LOG_PREFIX_TIME);
 
   std::ofstream ofs;
   std::ostringstream oss;
-  oss << "dat/1012/dat-n200-t120-gw.csv";
-  ofs.open(oss.str());
+//  oss << "dat/1012/dat-n200-t120-gw.csv";
+//  ofs.open(oss.str());
   double avgpdr = 0.0;
   double avgdelay = 0.0;
   float avginterfered = 0.0;
   float avgnomorercv = 0.0;
-  int r, initDev, incDev;
-  initDev = 200; incDev = 100; r = 7;
+  int r = 5;
+//  initDev, incDev;
+//  initDev = 200; incDev = 100; r = 7;
   double arr[6] = { 1250.0, 1400.0, 1500.0, 1750.0, 2000.0, 2500.0 };
 
   /*
@@ -627,66 +655,67 @@ int main (int argc, char *argv[])
    */
 
   NsLoraSim sim1;
-  for (int intGw = 0; intGw < 6; intGw++)
-  {
-	  for (int ndev=0; ndev <= 4; ndev++)
-	  {
-		  for (int j=1; j<=r; j++)
-		  {
-			  sim1 = NsLoraSim (initDev + ndev*incDev, arr[intGw] , 300.0, j*j);
-			  sim1.Run ();
-			  avgpdr += sim1.GetPDR ();
-			  avgdelay = avgdelay + (sim1.GetDelay () / sim1.GetReceived());
-			  avginterfered += sim1.GetInterferedProb();
-			  avgnomorercv += sim1.GetNoMoreRcvProb();
-		  }
-
-		  NS_LOG_INFO (std::to_string(initDev + ndev*incDev) << " " << std::to_string(sim1.GetGW()) << \
-				  	  " " << std::to_string(arr[intGw]) << " PDR: " << std::to_string(avgpdr/r) << \
-					  " delay: " << std::to_string(avgdelay/r) << " interfered:" << std::to_string(avginterfered/r) << \
-					  " nomore: " << std::to_string(avgnomorercv/r));
-		  ofs << std::to_string(initDev + ndev*incDev) << " " \
-				  << std::to_string(sim1.GetGW()) << " " \
-				  << std::to_string(arr[intGw]) << " " \
-				  << std::to_string(avgpdr/r) << " " \
-				  << std::to_string(avgdelay/r) << " " \
-				  << std::to_string(avginterfered/r) << " " \
-				  << std::to_string(avgnomorercv/r) << std::endl;
-
-		  avgpdr = 0.0;
-		  avgdelay = 0.0;
-	  }
-  }
-  ofs.close();
-  oss.clear();
+//  for (int intGw = 0; intGw < 6; intGw++)
+//  {
+//	  for (int ndev=0; ndev <= 4; ndev++)
+//	  {
+//		  for (int j=1; j<=r; j++)
+//		  {
+//			  sim1 = NsLoraSim (initDev + ndev*incDev, arr[intGw] , 300.0, j*j);
+//			  sim1.Run ();
+//			  avgpdr += sim1.GetPDR ();
+//			  avgdelay = avgdelay + (sim1.GetDelay () / sim1.GetReceived());
+//			  avginterfered += sim1.GetInterferedProb();
+//			  avgnomorercv += sim1.GetNoMoreRcvProb();
+//		  }
+//
+//		  NS_LOG_INFO (std::to_string(initDev + ndev*incDev) << " " << std::to_string(sim1.GetGW()) << \
+//				  	  " " << std::to_string(arr[intGw]) << " PDR: " << std::to_string(avgpdr/r) << \
+//					  " delay: " << std::to_string(avgdelay/r) << " interfered:" << std::to_string(avginterfered/r) << \
+//					  " nomore: " << std::to_string(avgnomorercv/r));
+//		  ofs << std::to_string(initDev + ndev*incDev) << " " \
+//				  << std::to_string(sim1.GetGW()) << " " \
+//				  << std::to_string(arr[intGw]) << " " \
+//				  << std::to_string(avgpdr/r) << " " \
+//				  << std::to_string(avgdelay/r) << " " \
+//				  << std::to_string(avginterfered/r) << " " \
+//				  << std::to_string(avgnomorercv/r) << std::endl;
+//
+//		  avgpdr = 0.0;
+//		  avgdelay = 0.0;
+//	  }
+//  }
+//  ofs.close();
+//  oss.clear();
 
   /*
    *  SECOND SCENARIO
    */
 
-  oss << "dat/1012/dat-n600-gw9-period.csv";
+  oss << "dat/1312/dat-n600-gw9-period.csv";
   ofs.open(oss.str());
   avgdelay = avgpdr = avginterfered = avgnomorercv = 0.0;
   uint8_t period[5] = {15, 20, 30, 45, 60};
 
-  for (int intGw=0; intGw<1; intGw++)
+  for (int intGw=0; intGw<3; intGw++)
   {
-	  for (uint8_t intper=0; intper<5; intper++)
+	  for (uint8_t intper=0; intper<2; intper++)
 	  {
-		  for (int j=1; j<r; j++)
+		  for (int j=1; j<=r; j++)
 		  {
 			  sim1 = NsLoraSim (600, arr[intGw], period[intper], j*j);
 			  sim1.Run ();
 			  avgpdr += sim1.GetPDR ();
-			  avgdelay = avgdelay + (sim1.GetDelay () / sim1.GetReceived());
+			  avgdelay += sim1.GetDelay ();
 			  avginterfered += sim1.GetInterferedProb();
 			  avgnomorercv += sim1.GetNoMoreRcvProb();
 		  }
 
-		  NS_LOG_INFO (std::to_string(period[intper]) << " " << std::to_string(sim1.GetGW()) << \
+		  NS_LOG_DEBUG (std::to_string(period[intper]) << " " << std::to_string(sim1.GetGW()) << \
 		  				  	  " " << std::to_string(arr[intGw]) << " PDR: " << std::to_string(avgpdr/r) << \
 		  					  " delay: " << std::to_string(avgdelay/r) << " interfered:" << std::to_string(avginterfered/r) << \
 		  					  " nomore: " << std::to_string(avgnomorercv/r));
+
 		  ofs << std::to_string(period[intper]) << " " \
 				  << std::to_string(sim1.GetGW()) << " " \
 				  << std::to_string(arr[intGw]) << " " \
