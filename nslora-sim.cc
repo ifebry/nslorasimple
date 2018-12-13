@@ -149,7 +149,7 @@ NsLoraSim::NsLoraSim (int m_devices, double m_gwInterval, double m_simulationTim
 	rRand = m_rand;
     simulationTime = m_simulationTime;
 
-    mode = 1012;
+    mode = 1312;
     NS_LOG_DEBUG ("nDev:" << std::to_string(nDevices) << " nGw:" << std::to_string(nGateways));
 }
 
@@ -170,7 +170,7 @@ NsLoraSim::NsLoraSim (int m_devices, double m_gwInterval, uint8_t m_appPeriod, u
 	rRand = m_rand;
 
 	nDevices = m_devices;
-	mode = 1012;
+	mode = 1312;
 	NS_LOG_DEBUG ("per: "<< std::to_string(appPeriodSeconds) << " nDev:" << std::to_string(nDevices) << " nGw:" << std::to_string(nGateways));
 }
 
@@ -639,15 +639,14 @@ int main (int argc, char *argv[])
 
   std::ofstream ofs;
   std::ostringstream oss;
-//  oss << "dat/1012/dat-n200-t120-gw.csv";
-//  ofs.open(oss.str());
+  oss << "dat/1312/dat-n200-t120-gw.csv";
+  ofs.open(oss.str());
   double avgpdr = 0.0;
   double avgdelay = 0.0;
   float avginterfered = 0.0;
   float avgnomorercv = 0.0;
-  int r = 5;
-//  initDev, incDev;
-//  initDev = 200; incDev = 100; r = 7;
+  int initDev, incDev, r;
+  initDev = 200; incDev = 100; r = 2;
   double arr[6] = { 1250.0, 1400.0, 1500.0, 1750.0, 2000.0, 2500.0 };
 
   /*
@@ -655,51 +654,53 @@ int main (int argc, char *argv[])
    */
 
   NsLoraSim sim1;
-//  for (int intGw = 0; intGw < 6; intGw++)
-//  {
-//	  for (int ndev=0; ndev <= 4; ndev++)
-//	  {
-//		  for (int j=1; j<=r; j++)
-//		  {
-//			  sim1 = NsLoraSim (initDev + ndev*incDev, arr[intGw] , 300.0, j*j);
-//			  sim1.Run ();
-//			  avgpdr += sim1.GetPDR ();
-//			  avgdelay = avgdelay + (sim1.GetDelay () / sim1.GetReceived());
-//			  avginterfered += sim1.GetInterferedProb();
-//			  avgnomorercv += sim1.GetNoMoreRcvProb();
-//		  }
-//
-//		  NS_LOG_INFO (std::to_string(initDev + ndev*incDev) << " " << std::to_string(sim1.GetGW()) << \
-//				  	  " " << std::to_string(arr[intGw]) << " PDR: " << std::to_string(avgpdr/r) << \
-//					  " delay: " << std::to_string(avgdelay/r) << " interfered:" << std::to_string(avginterfered/r) << \
-//					  " nomore: " << std::to_string(avgnomorercv/r));
-//		  ofs << std::to_string(initDev + ndev*incDev) << " " \
-//				  << std::to_string(sim1.GetGW()) << " " \
-//				  << std::to_string(arr[intGw]) << " " \
-//				  << std::to_string(avgpdr/r) << " " \
-//				  << std::to_string(avgdelay/r) << " " \
-//				  << std::to_string(avginterfered/r) << " " \
-//				  << std::to_string(avgnomorercv/r) << std::endl;
-//
-//		  avgpdr = 0.0;
-//		  avgdelay = 0.0;
-//	  }
-//  }
-//  ofs.close();
-//  oss.clear();
+  for (int intGw = 0; intGw < 6; intGw++)
+  {
+	  for (int ndev=0; ndev <= 4; ndev++)
+	  {
+		  for (int j=1; j<=r; j++)
+		  {
+			  sim1 = NsLoraSim (initDev + ndev*incDev, arr[intGw] , 300.0, j*j);
+			  sim1.Run ();
+			  avgpdr += sim1.GetPDR ();
+			  avgdelay += sim1.GetDelay ();
+			  avginterfered += sim1.GetInterferedProb();
+			  avgnomorercv += sim1.GetNoMoreRcvProb();
+		  }
 
+		  NS_LOG_DEBUG (std::to_string(initDev + ndev*incDev) << " " << std::to_string(sim1.GetGW()) << \
+				  	  " " << std::to_string(arr[intGw]) << " PDR: " << std::to_string(avgpdr/r) << \
+					  " delay: " << std::to_string(avgdelay/r) << " interfered:" << std::to_string(avginterfered/r) << \
+					  " nomore: " << std::to_string(avgnomorercv/r));
+
+		  ofs << std::to_string(initDev + ndev*incDev) << " " \
+				  << std::to_string(sim1.GetGW()) << " " \
+				  << std::to_string(arr[intGw]) << " " \
+				  << std::to_string(avgpdr/r) << " " \
+				  << std::to_string(avgdelay/r) << " " \
+				  << std::to_string(avginterfered/r) << " " \
+				  << std::to_string(avgnomorercv/r) << std::endl;
+
+		  avgpdr = 0.0;
+		  avgdelay = 0.0;
+		  avginterfered = 0.0;
+		  avgnomorercv = 0.0;
+	  }
+  }
+  ofs.close();
+  oss.flush();
   /*
    *  SECOND SCENARIO
    */
-
-  oss << "dat/1312/dat-n600-gw9-period.csv";
-  ofs.open(oss.str());
+  std::ostringstream oss2;
+  oss2 << "dat/1312/dat-n600-gw9-period.csv";
+  ofs.open(oss2.str());
   avgdelay = avgpdr = avginterfered = avgnomorercv = 0.0;
-  uint8_t period[5] = {15, 20, 30, 45, 60};
+  uint8_t period[5] = { 15, 20, 30, 45, 60 };
 
-  for (int intGw=0; intGw<3; intGw++)
+  for (int intGw=0; intGw<6; intGw++)
   {
-	  for (uint8_t intper=0; intper<2; intper++)
+	  for (uint8_t intper=0; intper<5; intper++)
 	  {
 		  for (int j=1; j<=r; j++)
 		  {
@@ -726,13 +727,14 @@ int main (int argc, char *argv[])
 
 		  avgpdr = 0.0;
 		  avgdelay = 0.0;
+		  avginterfered = 0.0;
+		  avgnomorercv = 0.0;
 	  }
   }
   ofs.close();
-  oss.clear();
+  oss2.flush();
 
+  oss.clear();
+  oss2.clear();
   return 0;
 }
-
-
-
