@@ -702,6 +702,7 @@ int main (int argc, char *argv[])
 
    /* FIRST SCENARIO */
   NsLoraSim sim1;
+  /*
   for (int intGw = 0; intGw < 7; intGw++)
   {
 	  for (int ndev=0; ndev <= 4; ndev++)
@@ -738,17 +739,18 @@ int main (int argc, char *argv[])
 		  avgtotal = 0.0;
 	  }
   }
+  */
   ofs.close();
   oss.flush();
 
    /*  SECOND SCENARIO */
   std::ostringstream oss2;
   oss2 << "dat/1712/dat-n600-gw9-period.csv";
-  ofs.open(oss2.str());
+  ofs.open(oss2.str(), std::ofstream::app);
   avgdelay = avgpdr = avginterfered = avgnomorercv = 0.0;
   uint8_t period[5] = { 30, 45, 60, 90, 120 };
 
-  for (int intGw=0; intGw<6; intGw++)
+  for (int intGw=0; intGw<7; intGw++)
   {
 	  for (uint8_t intper=0; intper<5; intper++)
 	  {
@@ -760,6 +762,7 @@ int main (int argc, char *argv[])
 			  avgdelay += sim1.GetDelay ();
 			  avginterfered += sim1.GetInterferedProb();
 			  avgnomorercv += sim1.GetNoMoreRcvProb();
+			  avgtotal += sim1.GetTotal();
 		  }
 
 		  NS_LOG_DEBUG (std::to_string(period[intper]) << " " << std::to_string(sim1.GetGW()) << \
